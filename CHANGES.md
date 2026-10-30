@@ -2,6 +2,14 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.9.113 - babysit watches the PR with a Monitor
+
+`/babysit` now arms one background `Monitor` on `skills/babysit/scripts/watch-pr.sh` instead of pacing re-checks with the `loop` skill or `gh pr checks --watch`. The script polls the PR every 60 seconds through one GraphQL query and prints only what changed: checks, unresolved review threads, the latest review and comment. Your own comments and replies don't count as changes. It keeps its last snapshot in `$TMPDIR`, so a re-armed watcher reports what happened while it was down, and it exits when the PR merges or closes. Cron ticks missed reviews for up to a full interval, and `--watch` exited early when a check waited on a person.
+
+Triage also changes. A branch behind its base, or a check failing in code the diff never touches, is reported and asked about rather than fixed, because a base merge restarts CI. A judgement-call review comment goes to the user through `AskUserQuestion` with options and a recommendation. A pushed fix gets a reply on its thread with the commit SHA and the test that proves it, and threads are left for the reviewer to resolve. Stopping `TaskStop`s the monitor.
+
+**Verified.** `bun tools/generate.mjs --check` and `bun test tests/` pass. The skill ran as a user-level override before this release.
+
 ## 0.9.112 - The Muse SessionStart hook runs on Windows without sh
 
 The Muse plugin now declares two SessionStart hooks, so Muse on Windows gets the mandate and the sheet's usable role lines when the harness PATH has no `sh`. `session-start` runs the shared shell script, and `session-start-windows` runs `hooks/session-start.ps1 muse`. Muse's native hook schema takes one command per hook and rejects a per-OS variant such as `commandWindows`, so each hook stands down on the OS the other owns. On a machine without one of the two programs, that hook records a failed spawn at session start and the other delivers the context. @LuckyProtein found and fixed this in [#332](https://github.com/michael-denyer/pstack-claude/pull/332).

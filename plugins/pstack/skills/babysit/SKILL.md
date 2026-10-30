@@ -11,13 +11,11 @@ On GitHub Copilot, read the [platform mapping](../poteto-mode/references/copilot
 
 On Muse, read the [platform mapping](../poteto-mode/references/muse-tools.md), including its per-skill notes, before following this skill.
 
-Claude Code analog of Cursor's built-in `/babysit`. The implementation is a loop over `gh` CLI plus the Claude Code `loop` skill for pacing.
-
-Inside poteto-mode, the **Babysit** playbook ([`../poteto-mode/playbooks/babysit.md`](../poteto-mode/playbooks/babysit.md)) supersedes this skill: it owns mode declaration, the merge frontier, stack safety, and the `watch-pr` watcher. This skill stays the standalone `/babysit` entry point for a single PR outside a poteto-mode run.
+Shepherd one open PR to mergeable. A background `Monitor` running `scripts/watch-pr.sh` wakes you when the PR changes. `<skill dir>` is this skill's base directory, which the Skill tool prints when it loads the skill. Inside a poteto-mode run, use its Babysit playbook instead.
 
 ## When to use
 
-- There's an open PR and the user explicitly wants it kept green, and you are not already inside a poteto-mode run (the playbook owns that case).
+- There's an open PR and the user explicitly wants it kept green.
 - The user invokes `/babysit` directly.
 - A subagent that opens a PR does NOT babysit — return to the parent and let the parent decide.
 
@@ -26,24 +24,29 @@ Inside poteto-mode, the **Babysit** playbook ([`../poteto-mode/playbooks/babysit
 1. **Fetch PR state.**
 
    ```bash
-   gh pr view <number> --json number,title,state,mergeable,reviewDecision,statusCheckRollup,mergeStateStatus,comments,reviews
+   <skill dir>/scripts/watch-pr.sh <owner/repo> <number> once
    ```
 
-2. **Triage in priority order.**
-   - Merge conflicts (`mergeStateStatus == DIRTY`): run the **fix-merge-conflicts** skill. Force-push only if the branch is yours and not shared.
-   - Failing checks (`statusCheckRollup` entries with `conclusion: FAILURE`): run the **fix-ci** skill. Root-cause the failure; fix the underlying code or test; commit; push.
-   - Review comments: run the **get-pr-comments** skill for the summary, then act only on feedback you actually agree with. When a comment has a single mechanical answer — a rename, a guard clause, a formatting nit — make the edit and quote the comment in the commit message. When it hinges on a judgement call, or you can't tell what's being asked, don't guess: leave it and reply with what you would have done.
-   - Review-bot comments (Bugbot and similar automation): classify fix/dismiss/ask before acting, per [`bugbot-triage.md`](../poteto-mode/references/bugbot-triage.md). Ask by default on security, data, and high-severity findings.
+   One line each: state, head, mergeable/mergeStateStatus, reviewDecision, each check, each unresolved thread (id, path, last comment by someone else), last review, last comment. `gh pr view` shows no unresolved threads. Read thread bodies only for threads that are new or changed.
 
-3. **Loop.** Use the Claude Code `loop` skill to pace re-checks. Pick the interval from what you're watching:
-   - Active CI run: poll `gh pr checks --watch` (it blocks until checks finish, so no separate loop interval needed).
-   - Awaiting reviewer: 20–30 min heartbeat.
-   - Idle but want to catch new comments: hourly.
+2. **Triage in priority order.**
+   - Merge conflicts (`mergeStateStatus == DIRTY`): run the **pstack:fix-merge-conflicts** skill. Force-push only if the branch is yours and not shared.
+   - Branch `BEHIND` base, or a check failing in code the diff never touches: report it and ask before merging or rebasing base in. It restarts CI.
+   - Failing checks (`conclusion: FAILURE`): run the **pstack:fix-ci** skill. Root-cause the failure; fix the underlying code or test; commit; push.
+   - Review comments: run the **pstack:get-pr-comments** skill for the summary, then act only on feedback you actually agree with. When a comment has a single mechanical answer — a rename, a guard clause, a formatting nit — make the edit and quote the comment in the commit message. When it hinges on a judgement call, or you can't tell what's being asked, put it to the user with `AskUserQuestion`: list the options, recommend one. After pushing a fix, reply on its thread with the commit SHA and the test that proves it; pass the body with `-f`, never interpolated into the query. Never resolve threads: the reviewer resolves.
+   - Review-bot comments (Bugbot and similar automation): classify fix/dismiss/ask before acting, per pstack's `skills/poteto-mode/references/bugbot-triage.md`. Ask by default on security, data, and high-severity findings.
+
+3. **Watch.** Arm one `Monitor`: command `<skill dir>/scripts/watch-pr.sh <owner/repo> <number>`, `timeout_ms` 1800000, description `PR #<number> state change`. It polls every 60s and prints only changes (`+` new, `-` gone). Your own comments, replies and reviews are not changes. It exits when the PR is merged or closed. No `CronCreate`, `/loop`, sleep loops or `gh pr checks --watch`: cron ticks miss reviews for up to a full interval, and `--watch` exits early when a check waits on a person.
+   - On an event: read only what changed, triage per step 2, keep waiting.
+   - On the expiry notice: re-arm, unless `TaskList` shows a watcher for this PR still running. The script keeps its last snapshot in `$TMPDIR`, so the re-armed watcher reports what changed in the gap.
+   - On `watch-error`: run step 1 by hand; report if `gh` auth or the network is down.
+   - Asked whether babysit is still running: answer from `TaskList`, not from memory.
 
 4. **When to stop.**
    - Build is green, every comment resolved, branch merges cleanly → call it ready.
    - You've run three rounds of fix → push → recheck and it still isn't fully green → stop, summarise what's still broken, and hand control back.
    - The next fix would force a design choice → pause and put it to the user with `AskUserQuestion`.
+   - Whenever you stop, `TaskStop` the monitor.
 
 5. **Report.** Summarize fixes applied, comments addressed, comments deferred (with reason), current PR status. Cite each commit by SHA.
 
