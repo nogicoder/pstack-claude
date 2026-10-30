@@ -68,7 +68,7 @@
     },
     "plugins/pstack/skills/poteto-mode/playbooks/babysit.md": {
       "kind": "policy",
-      "why": "Requires confirming that the first status read reports the requested PR or stack, and naming the merge frontier, before acting on it, and reports the watcher's behind-base gate to the branch owner instead of resolving it, as it does a conflict.",
+      "why": "Requires confirming that the first status read reports the requested PR or stack, and naming the merge frontier, before acting on it, and reports the watcher's behind-base gate to the branch owner instead of resolving it, as it does a conflict. Also treats checks waiting on a person and answered-but-unresolved threads as waits, reproduces unreadable CI failures locally, warns before a push dismisses an approval, batches judgement calls after rearming, and rearms silently on unchanged wakeups.",
       "since": "0.9.39",
       "upstream": "not-proposed"
     },

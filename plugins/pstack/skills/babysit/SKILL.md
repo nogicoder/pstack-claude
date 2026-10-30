@@ -38,12 +38,12 @@ Shepherd one open PR to mergeable. A background `Monitor` running `scripts/watch
 
 3. **Watch.** Arm one `Monitor`: command `<skill dir>/scripts/watch-pr.sh <owner/repo> <number>`, `timeout_ms` 1800000, description `PR #<number> state change`. It polls every 60s and prints only changes (`+` new, `-` gone). Your own comments, replies and reviews are not changes. It exits when the PR is merged or closed. No `CronCreate`, `/loop`, sleep loops or `gh pr checks --watch`: cron ticks miss reviews for up to a full interval, and `--watch` exits early when a check waits on a person.
    - On an event: read only what changed, triage per step 2, keep waiting.
-   - On the expiry notice: re-arm, unless `TaskList` shows a watcher for this PR still running. The script keeps its last snapshot in `$TMPDIR`, so the re-armed watcher reports what changed in the gap.
+   - On the expiry notice: re-arm, unless `TaskList` shows a watcher for this PR still running. The script keeps its last snapshot in `$TMPDIR`, so the re-armed watcher reports what changed in the gap. Re-arm silently: no report when nothing changed.
    - On `watch-error`: run step 1 by hand; report if `gh` auth or the network is down.
    - Asked whether babysit is still running: answer from `TaskList`, not from memory.
 
 4. **When to stop.**
-   - Build is green, every comment resolved, branch merges cleanly → call it ready.
+   - Build is green apart from checks waiting on a person, every thread has a reply citing a SHA or disproof, branch merges cleanly → call it ready. Unresolved threads and pending approvals are the reviewer's, not blockers.
    - You've run three rounds of fix → push → recheck and it still isn't fully green → stop, summarise what's still broken, and hand control back.
    - The next fix would force a design choice → pause and put it to the user with `AskUserQuestion`.
    - Whenever you stop, `TaskStop` the monitor.

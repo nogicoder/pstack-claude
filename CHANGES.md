@@ -2,6 +2,21 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.9.114 - Babysit lessons from a parallel run
+
+The Babysit playbook and `/babysit` take lessons from eight PRs babysat in parallel, one session each.
+
+- A check that waits on a person, such as a manual visual review, is a wait like owner approval, not a failure to fix.
+- A thread with a reply citing the fix commit or the disproof is answered. The reviewer resolves it, so `/babysit` no longer names "every comment resolved" as its ready condition while forbidding you to resolve threads.
+- When the CI log cannot be read, for example behind a provider token, the failing step runs locally from the CI config before a cause is named, and an unreproduced cause is marked unconfirmed. One run guessed a timeout; another reproduced a delta-coverage failure and fixed it.
+- A failure the PR causes on purpose, such as a probe, is reported from the PR description instead of fixed.
+- Before a push to an approved PR, the babysitter checks whether the base dismisses stale approvals, names the approver whose approval the push costs, and asks first when the wave holds only nits.
+- Mechanical bot findings land in one push wave with each finding quoted in the commit message. Judgement calls go to the user in one batched question after the watcher is rearmed.
+- A wakeup that changes nothing, such as a watcher timeout, rearms without a report. Thirty-minute timeouts across eight sessions had produced a stream of "no change" notes.
+- A babysitter whose PR branch is checked out in another worktree works detached on `origin/<branch>` and pushes `HEAD:<branch>`.
+
+**Verified.** `bun tools/generate.mjs --check` and `bun test tests/` pass.
+
 ## 0.9.113 - babysit watches the PR with a Monitor
 
 `/babysit` now arms one background `Monitor` on `skills/babysit/scripts/watch-pr.sh` instead of pacing re-checks with the `loop` skill or `gh pr checks --watch`. The script polls the PR every 60 seconds through one GraphQL query and prints only what changed: checks, unresolved review threads, the latest review and comment. Your own comments and replies don't count as changes. It keeps its last snapshot in `$TMPDIR`, so a re-armed watcher reports what happened while it was down, and it exits when the PR merges or closes. Cron ticks missed reviews for up to a full interval, and `--watch` exited early when a check waited on a person.
