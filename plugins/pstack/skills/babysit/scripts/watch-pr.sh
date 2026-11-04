@@ -5,7 +5,8 @@
 # "once": print the current snapshot and exit.
 # The last snapshot is kept in $TMPDIR, so a re-armed watcher also reports
 # what changed while it was down. The first run ever is silent.
-# Prints "watch-error: <msg>" after 5 failed polls in a row.
+# Prints "watch-error: <msg>" after 5 failed polls in a row; backs off up to 10 min.
+# Prints "rate-limited until HH:MMZ" once and pauses while the GraphQL quota is used up.
 # Exits 0 once the PR is merged or closed.
 set -u
 repo=${1:?owner/repo}
@@ -42,26 +43,32 @@ jq_filter='.data.viewer.login as $me | .data.repository.pullRequest as $p |
  ($p.comments.nodes | others | .[-1] // empty
    | "last-comment \(.author.login)@\(.createdAt)")'
 
+# Fails on gh's exit status, not on what the output looks like: a network
+# error is plain text and must never be saved as a snapshot
 snapshot() {
-  gh api graphql -f query="$query" -f o="$owner" -f n="$name" -F p="$number" \
-    --jq "$jq_filter" 2>&1 | sort
+  local out
+  out=$(gh api graphql -f query="$query" -f o="$owner" -f n="$name" -F p="$number" \
+    --jq "$jq_filter" 2>&1) && [ -n "$out" ] || { echo "$out"; return 1; }
+  sort <<<"$out"
 }
 
-# gh errors come back as a "gh: " line or the raw JSON response
-failed() { [ -z "$1" ] || grep -qE '^(gh: |\{)' <<<"$1"; }
+# Epoch when the GraphQL quota resets, only while it is used up. The REST
+# rate_limit endpoint does not count against the quota.
+quota_reset() {
+  gh api rate_limit --jq '.resources.graphql | select(.remaining == 0) | .reset' 2>/dev/null
+}
 
 if [ "$mode" = once ]; then
-  cur=$(snapshot)
-  echo "$cur"
-  failed "$cur" && exit 1
-  exit 0
+  snapshot
+  exit
 fi
 
 failures=0
+limited=
 while true; do
-  cur=$(snapshot)
-  if ! failed "$cur"; then
+  if cur=$(snapshot); then
     failures=0
+    limited=
     if [ -f "$state_file" ]; then
       prev=$(cat "$state_file")
       if [ "$cur" != "$prev" ]; then
@@ -76,10 +83,25 @@ while true; do
       exit 0
     fi
   else
+    reset=$(quota_reset)
+    if [ -n "$reset" ]; then
+      # Polling an empty quota only drains it for the user's other sessions
+      if [ "$reset" != "$limited" ]; then
+        limited=$reset
+        echo "rate-limited until $(date -u -d "@$reset" +%H:%MZ 2>/dev/null || date -u -r "$reset" +%H:%MZ)"
+      fi
+      wait=$((reset - $(date +%s) + 5))
+      sleep $((wait > 60 ? wait : 60))
+      continue
+    fi
     failures=$((failures + 1))
     if [ "$failures" -eq 5 ]; then
-      echo "watch-error: $(head -1 <<<"$cur")"
+      echo "watch-error: $(tr '\n' ' ' <<<"$cur" | cut -c1-200)"
     fi
+    # Back off 60s, 120s, 240s, 480s, then every 600s
+    delay=$((60 << (failures < 5 ? failures - 1 : 4)))
+    sleep $((delay < 600 ? delay : 600))
+    continue
   fi
   sleep 60
 done

@@ -2,6 +2,17 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.9.115 - babysit hands review threads to pr-review-addresser
+
+`/babysit` no longer fixes review comments itself. Its "never resolve threads" rule clashed with the mob-pr-review `pr-review-addresser` agent and left a PR blocked by open bot threads. "Address the PR review" also reached both prompts.
+
+- Review threads, from people and bots, go to `mob-pr-review:pr-review-addresser`. Babysit spawns it once per review round, after the round's `last-review` line appears, never once per thread. It does not edit or push while the agent runs. It asks the user each question the agent stopped on with `AskUserQuestion`, then re-arms the watcher if it stopped. Babysit keeps CI, merge conflicts and the watch loop.
+- Ready again needs no unresolved threads. Checks or reviews that wait on a person (a manual check left PENDING, a required approving review, a thread the agent left open for its reviewer or a bot) are named with who must act; babysit does not call the PR merge-ready.
+- `watch-pr.sh` fails a poll on `gh`'s exit status, so a network error is never saved as a snapshot. When the GraphQL quota is used up it prints `rate-limited until HH:MMZ` once and pauses until the reset. Failed polls back off from 60s to 600s.
+- The Provenance section is cut.
+
+**Verified.** `scripts/watch-pr.test.sh` runs `watch-pr.sh` against a fake `gh` and `sleep`: 4 cases pass on the new script, and the suite fails on the 0.9.114 script. `bun tools/generate.mjs --check` and `bun test tests/` pass. The skill ran as a user-level override first.
+
 ## 0.9.114 - Babysit lessons from a parallel run
 
 The Babysit playbook takes lessons from eight PRs babysat in parallel, one session each.
