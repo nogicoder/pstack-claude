@@ -2,6 +2,17 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.9.116 - maintain-verification-skill reads past run history
+
+A verification skill can now keep a record of every run outside the checkout (driver-app's `verify` writes `run.json` + `drive.log` to `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/verify-runs/<repo>/`). `/maintain-verification-skill` uses that history as leads.
+
+- Step 1 adds **Run history**: read runs since the last pass, grouped by journey. Steps that fail in two or more runs, journeys that are mostly `not-verified`, and finders seen only in failing runs become candidate harness gaps, missing prerequisites or doc drift.
+- Step 3 spot-checks those leads, and step 4 drives every flagged journey live. History alone never ships a change.
+- The pass hands each drive's verdict to the skill's cleanup when it accepts one, so its own runs join the history.
+- A skill with no archive skips the step.
+
+**Verified.** `bun tools/generate.mjs --check` and `bun test tests/` pass.
+
 ## 0.9.115 - babysit hands review threads to pr-review-addresser
 
 `/babysit` no longer fixes review comments itself. Its "never resolve threads" rule clashed with the mob-pr-review `pr-review-addresser` agent and left a PR blocked by open bot threads. "Address the PR review" also reached both prompts.
