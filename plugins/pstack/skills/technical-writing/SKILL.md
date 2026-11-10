@@ -17,6 +17,8 @@ The codebase is the word list. Write the real symbol, file, flag, or command nam
 
 Don't invent jargon. Use the words a developer would say out loud: "move", "delete", "a budget that only decreases", not "evacuate", "ratchet", or "endgame". A named pattern is fine when the doc says what it means the first time. Propose a new offender and its replacement as an addition to `unslop`'s abstract-metaphor rule in your reply, with the diff. Don't edit that skill.
 
+**Caveman mode.** When the session context carries a `CAVEMAN MODE ACTIVE` hook line, caveman's wording rules replace this skill's for every text caveman covers. That includes commit messages, PR text, tickets, and replies. Drop a/an/the unless the sentence then reads two ways. Keep each sentence to 20 words or fewer. Use no ceremony words. Rules here that set structure, not wording, still apply. Without that line, every rule here applies as written.
+
 ## Vary the rhythm
 
 A doc can obey every layer and still read machine-written: every sentence clipped short, no view anywhere, nothing specific.

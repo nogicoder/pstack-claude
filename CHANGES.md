@@ -2,6 +2,17 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.9.117 - Prose rules defer to caveman mode
+
+pstack told agents to keep articles in PR text and commit bodies. Caveman's lint gate refuses that text: over 4 a/an/the per 100 words, sentences over 20 words, ceremony words. Session running both plugins got refused twice per PR body.
+
+- `opening-a-pr.md`, `technical-writing`, `unslop` rule 33 and poteto-mode's **Writing the reply** now look for `CAVEMAN MODE ACTIVE` hook line in session context. Present: drop a/an/the unless sentence then reads two ways, 20 words max per sentence, no ceremony words.
+- Structure rules stay: Conventional Commit titles, PR section order, evidence labels.
+- No hook line: every rule applies as before.
+- `tools/forks.json` declares `technical-writing` and `unslop` as policy forks.
+
+**Verified.** `bun tools/generate.mjs --check` and `bun test tests/` pass.
+
 ## 0.9.116 - maintain-verification-skill reads past run history
 
 A verification skill can now keep a record of every run outside the checkout (driver-app's `verify` writes `run.json` + `drive.log` to `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/verify-runs/<repo>/`). `/maintain-verification-skill` uses that history as leads.

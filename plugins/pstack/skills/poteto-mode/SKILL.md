@@ -113,6 +113,7 @@ You own every subagent's work. Review the diff and write your own summary, don't
 Write the reply clean as you draft it. A cleanup pass after drafting does not remove these patterns.
 
 - **Short declarative sentences.** One thought per sentence, ended with a period.
+- **Caveman mode sets the wording.** When the session context carries a `CAVEMAN MODE ACTIVE` hook line, drop a/an/the unless the sentence then reads two ways. Keep each sentence to 20 words or fewer. Use no ceremony words. Fragments are fine. Every other rule in this list still applies.
 - **No long-dash character anywhere.** Write a file-list bullet as a sentence ("`main.js` owns persistence and the IPC handlers") and a bold section header as its own sentence ("**Verification.** End to end via CDP").
 - **A colon as a mid-sentence connector is also out** (unslop rule 14). A colon before a list is fine.
 - **Terse is not an excuse to drop content.** Every item the playbook's reply names stays. Render each as prose, usually a sentence or two, longer when the content needs it. No section headers, and no item expanded into its own block.
