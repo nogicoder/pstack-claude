@@ -36,6 +36,12 @@
       "since": "0.9.29",
       "upstream": "not-proposed"
     },
+    "plugins/pstack/skills/maintain-verification-skill/SKILL.md": {
+      "kind": "policy",
+      "why": "Reads the verification skill's archive of past runs as leads in step 1, spot-checks those leads and drives every flagged journey, and passes each drive's verdict to the skill's cleanup so the pass's own runs join the history.",
+      "since": "0.9.116",
+      "upstream": "not-proposed"
+    },
     "plugins/pstack/skills/no-comments/SKILL.md": {
       "kind": "policy",
       "why": "Treats a HOLD that names its dependency, platform, vendor, or protocol rule and where to check it as settled for the run, restores as a HOLD any kill of such a comment without a refuting page or file, and limits a second rejected report's failure to that report's findings so the accepted work still lands.",
