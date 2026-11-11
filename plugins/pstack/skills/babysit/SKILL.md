@@ -41,15 +41,17 @@ Shepherd one open PR to mergeable. A background `Monitor` running `scripts/watch
    - On `watch-error`: run step 1 by hand; report if `gh` auth or the network is down.
    - On `rate-limited until <time>`: do nothing. The watcher pauses and resumes by itself; do not set your own timer or start a second watcher.
    - Asked whether babysit is still running: answer from `TaskList`, not from memory.
+   - In the Claude desktop app (`mcp__ccd_pr__*` tools exist), also turn on Auto-fix before the first wait. Run `get_status`. PR not bound: `bind_pr` with its URL. `auto_fix` off: `set_monitor` with `auto_fix: true` and the URL. The babysit request is the user's ask for that switch. Auto-fix wakes this session on CI failures, merge conflicts and review comments, also after the watcher stops. It does not wake on green checks or an approval, so arm the watcher too. `set_monitor` refused (PR not opened by the `gh` account): say so in the report.
 
 4. **When to stop.**
    - Build is green, no unresolved threads, branch merges cleanly → call it ready.
-   - Only checks or reviews that wait on a person remain (a manual check that stays PENDING with nothing running, a required approving review, a thread the addresser left open for its reviewer or a bot) → do not call it merge-ready. Name each one and who must act, and stop watching unless asked to keep going.
+   - A check is still QUEUED or IN_PROGRESS, or you just pushed → keep the watcher armed, even when a person-gated item also remains. Stopping with CI running defeats the skill.
+   - Only checks or reviews that wait on a person remain, and nothing is running (a manual check that stays PENDING, a required approving review, a thread the addresser left open for its reviewer or a bot) → do not call it merge-ready. Name each one and who must act. Auto-fix on: stop the watcher, since the next review comment wakes this session. Auto-fix off or not available: keep the watcher armed, because that person's review is the next event.
    - You've run three rounds of fix → push → recheck and it still isn't fully green → stop, summarise what's still broken, and hand control back.
    - The next fix would force a design choice → pause and put it to the user with `AskUserQuestion`.
    - Whenever you stop, `TaskStop` the monitor.
 
-5. **Report.** Summarize fixes applied, comments addressed, comments deferred (with reason), current PR status. Cite each commit by SHA.
+5. **Report.** Summarize fixes applied, comments addressed, comments deferred (with reason), current PR status. Cite each commit by SHA. Say what wakes this session next: the watcher, Auto-fix, or nothing (the user must prompt it).
 
 ## Hard rules
 

@@ -2,6 +2,17 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.9.118 - babysit keeps watching while PR waits on people
+
+Babysit sessions went deaf. driver-app#2342, #2357 and #2339 sessions armed no watcher once only an approval was left, so later review comments never woke them. #2371 session stopped with required `verify` still IN_PROGRESS.
+
+- Check QUEUED or IN_PROGRESS, or fix just pushed: watcher stays armed, even with a person-gated item left.
+- Only person-gated items left: name who acts. Auto-fix on: stop watcher, next review comment wakes session. Auto-fix off or missing: keep watcher armed.
+- Claude desktop app: `get_status`, `bind_pr` when unbound, `set_monitor` with `auto_fix: true` before first wait.
+- Report says what wakes session next: watcher, Auto-fix, or nothing.
+
+**Verified.** Offline eval, 4 cases from real stopped sessions, 2 runs each: 0.75 before, 1.00 after. Live trial on driver-app#2374, Auto-fix step left out: watcher stayed armed while PR waited on a reviewer, an approval woke session, and session re-armed watcher at 30-min Monitor expiry (09:43:33Z). Auto-fix step not tried live. `bun tools/generate.mjs --check` not run locally (no bun); CI runs it.
+
 ## 0.9.117 - Prose rules defer to caveman mode
 
 pstack told agents to keep articles in PR text and commit bodies. Caveman's lint gate refuses that text: over 4 a/an/the per 100 words, sentences over 20 words, ceremony words. Session running both plugins got refused twice per PR body.
