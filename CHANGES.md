@@ -2,6 +2,20 @@
 
 This file is the release changelog, with one `## <version> - <title>` entry per release, newest first. The Cursor-to-Claude rewrite rules live in [`tools/substitutions.json`](tools/substitutions.json), and the [sync boundary](CONTRIBUTING.md#the-sync-boundary) in `CONTRIBUTING.md` defines how a change to upstream's skill content is declared.
 
+## 0.9.119 - babysit arms watcher and Auto-fix before triage
+
+Two babysit sessions (gojitsucom/driver-app#2372, gojitsucom/driver-app#2379) ended first turn with no watcher and no Auto-fix: "Nothing wakes this session until prompted." Only failing check was infra (Widgetbook Cloud snapshot quota, same on `main`), so triage found no code fix and run went straight to report. Watcher and Auto-fix setup lived in step 3, after triage, so neither ran. Brief "Done: CI green" also read as whole task.
+
+- New step 2, **Arm before triage**: arm watcher and turn on Auto-fix (load deferred `mcp__ccd_pr__*` with ToolSearch) before triage. No-code finding does not skip it.
+- Triage: check failing outside PR (quota, outage, secret; same on base) is person-gated, no `fix-ci`, keep watching. `BEHIND` base now own bullet.
+- Stop: person-gated keeps watcher armed whether Auto-fix on or off. Auto-fix does not wake on approval or passing rerun.
+- Ending a turn or waiting on person/addresser is not stopping. Stop names its bullet.
+- Report: check `TaskList` and `get_status` first, repair missing setup. "Nothing wakes" only after merge, close or user stop.
+- When to use: caller scope limits what you fix, not whether you watch.
+- Cut `interrogate` cross-ref: babysit starts only after PR is open.
+
+**Verified.** Offline eval, 5 cases, 2 runs each, sonnet task, opus judge: 0.96 before, 1.00 after. New case `infra-check-only` (from driver-app PR 2372) 0.80 before (no watcher), 1.00 after; other 4 cases 1.00 both. Judged by Opus and Codex reviewers independently; both named same root cause. Not tried live yet. `bun tools/generate.mjs --check` not run locally (no bun); CI runs it.
+
 ## 0.9.118 - babysit keeps watching while PR waits on people
 
 Babysit sessions went deaf. driver-app#2342, #2357 and #2339 sessions armed no watcher once only an approval was left, so later review comments never woke them. #2371 session stopped with required `verify` still IN_PROGRESS.
